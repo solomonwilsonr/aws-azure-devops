@@ -1,0 +1,53 @@
+trigger:
+- main
+
+pool:
+  vmImage: ubuntu-latest
+
+jobs:
+  - job: Deploy
+    displayName: 'Deploy Infrastructure'
+    steps:
+
+      # Verify AWS Credentials
+      - task: AWSCLI@1
+        inputs:
+          awsCredentials: 'aws-connection'       # Use your correct service connection name
+          regionName: 'us-east-1'
+          awsCommand: 'sts'
+          awsSubCommand: 'get-caller-identity'
+        displayName: 'Verify AWS Credentials'
+
+      # Install Terraform (explicitly set version 1.5.7)
+      - task: ms-devlabs.custom-terraform-tasks.custom-terraform-installer-task.TerraformInstaller@1
+        inputs:
+          terraformVersion: '1.5.7'
+        displayName: 'Install Terraform 1.5.7'
+
+      # Terraform Init
+      - task: ms-devlabs.custom-terraform-tasks.custom-terraform-release-task.TerraformTask@5
+        inputs:
+          provider: 'aws'
+          command: 'init'
+          backendServiceAWS: 'aws-terraform'            # Use the same connection name used in DevOps
+          backendAWSBucketName: 'my-terraform-bucket-aws-azure'
+          backendAWSKey: 'dev/terraform.tfstate'
+          backendAWSRegion: 'us-east-1'
+        displayName: 'Terraform Init'
+
+      # Terraform Plan
+      - task: ms-devlabs.custom-terraform-tasks.custom-terraform-release-task.TerraformTask@5
+        inputs:
+          provider: 'aws'
+          command: 'plan'
+          environmentServiceNameAWS: 'aws-terraform'
+        displayName: 'Terraform Plan'
+
+      # Terraform Apply
+      - task: ms-devlabs.custom-terraform-tasks.custom-terraform-release-task.TerraformTask@5
+        inputs:
+          provider: 'aws'
+          command: 'apply'
+          environmentServiceNameAWS: 'aws-terraform'
+          commandOptions: '-auto-approve'
+        displayName: 'Terraform Apply'
