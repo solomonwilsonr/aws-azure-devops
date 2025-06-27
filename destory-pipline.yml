@@ -1,0 +1,40 @@
+trigger: none  # Do not auto-run; manual only
+
+pool:
+  vmImage: ubuntu-latest
+
+jobs:
+  - job: Destroy
+    displayName: 'Terraform Destroy'
+    steps:
+
+      - task: AWSCLI@1
+        inputs:
+          awsCredentials: 'aws-connection'
+          regionName: 'us-east-1'
+          awsCommand: 'sts'
+          awsSubCommand: 'get-caller-identity'
+        displayName: 'Verify AWS Credentials'
+
+      - task: ms-devlabs.custom-terraform-tasks.custom-terraform-installer-task.TerraformInstaller@1
+        inputs:
+          terraformVersion: '1.5.7'
+        displayName: 'Install Terraform'
+
+      - task: ms-devlabs.custom-terraform-tasks.custom-terraform-release-task.TerraformTask@5
+        inputs:
+          provider: 'aws'
+          command: 'init'
+          backendServiceAWS: 'aws-terraform'
+          backendAWSBucketName: 'my-terraform-bucket-aws-azure'
+          backendAWSKey: 'dev/terraform.tfstate'
+          backendAWSRegion: 'us-east-1'
+        displayName: 'Terraform Init'
+
+      - task: ms-devlabs.custom-terraform-tasks.custom-terraform-release-task.TerraformTask@5
+        inputs:
+          provider: 'aws'
+          command: 'destroy'
+          environmentServiceNameAWS: 'aws-terraform'
+          commandOptions: '-auto-approve'
+        displayName: 'Terraform Destroy'
